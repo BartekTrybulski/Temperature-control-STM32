@@ -21,10 +21,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+
 #include "BMPXX80.h"
 #include "i2c-lcd.h"
 #include <stdio.h>
 #include <string.h>
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -102,7 +104,11 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+	
+  lcd_init();
+  BMP280_Init(&hi2c1, BMP280_TEMPERATURE_16BIT, BMP280_STANDARD, BMP280_FORCEDMODE);
+  HAL_TIM_PWM_Start (&htim3, TIM_CHANNEL_4);
+	
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -122,10 +128,6 @@ int main(void)
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
-  lcd_init();
-  BMP280_Init(&hi2c1, BMP280_TEMPERATURE_16BIT, BMP280_STANDARD, BMP280_FORCEDMODE);
-  HAL_TIM_PWM_Start (&htim3, TIM_CHANNEL_4);
-
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -136,17 +138,17 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 
-	ADC_Read();
-	BMP280_ReadTemperatureAndPressure(&temperature, &pressure);
+    ADC_Read();
+    BMP280_ReadTemperatureAndPressure(&temperature, &pressure);
 
-	destintion_calculate();
-	u = control(125, 0.62, 1, (int) destination, temperature, 1);
-	__HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_4, u);
+    destintion_calculate();
+    u = control(125, 0.62, 1, (int) destination, temperature, 1);
+    __HAL_TIM_SET_COMPARE(&htim3,TIM_CHANNEL_4, u);
 
-	uart_transmit();
+    uart_transmit();
 
-	display_LCD();
-	HAL_Delay(1000);
+    display_LCD();
+    HAL_Delay(1000);
 
   }
   /* USER CODE END 3 */
@@ -547,55 +549,55 @@ static void MX_GPIO_Init(void)
 
 void ADC_Read()
 {
-	 HAL_ADC_Start(&hadc1);
-	 HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
-	 AdcValue = HAL_ADC_GetValue(&hadc1);
+  HAL_ADC_Start(&hadc1);
+  HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+  AdcValue = HAL_ADC_GetValue(&hadc1);
 }
 
 float destintion_calculate()
 {
-	  destination = 20*AdcValue/4095+20;
-	  return destination;
+  destination = 20*AdcValue/4095+20;
+  return destination;
 }
 
 float control(float Kp, float Ki, float Kd, float destination, float temperature, float dt)
 {
 
-	error = destination - temperature;
+  error = destination - temperature;
 
-	P = Kp*error;
+  P = Kp*error;
 
-	Integral = p_integral + (error + prev_error);
-	p_integral = Integral;
-	I = Ki*Integral*(dt/2);
+  Integral = p_integral + (error + prev_error);
+  p_integral = Integral;
+  I = Ki*Integral*(dt/2);
 
-	Derrivatie = (error - prev_error)/dt;
-	prev_error = error;
-	D = Kd*Derrivatie;
+  Derrivatie = (error - prev_error)/dt;
+  prev_error = error;
+  D = Kd*Derrivatie;
 
-	u = P + I + D;
+  u = P + I + D;
 
-	if(u > 999) u = 999;
-	else if(u < 0) u = 0;
+  if(u > 999) u = 999;
+  else if(u < 0) u = 0;
 
-	return u;
+  return u;
 }
 
 void display_LCD()
 {
-	 //lcd_clear ();
-	 lcd_put_cur(0, 0);
-	 sprintf((char*)text_LCD, "Temp. %.2f C", temperature);
-	 lcd_send_string(text_LCD);
-	 lcd_put_cur(1, 0);
-	 sprintf((char*)text_LCD, "Temp. zad. %d C", (int) destination);
-	 lcd_send_string(text_LCD);
+  //lcd_clear ();
+  lcd_put_cur(0, 0);
+  sprintf((char*)text_LCD, "Temp. %.2f C", temperature);
+  lcd_send_string(text_LCD);
+  lcd_put_cur(1, 0);
+  sprintf((char*)text_LCD, "Temp. zad. %d C", (int) destination);
+  lcd_send_string(text_LCD);
 }
 
 void uart_transmit()
 {
-	 snprintf((char*)text, 16, ",%.2f, \n  %.2f, \n" , u/999, temperature);
-	 HAL_UART_Transmit(&huart3, (char*)text, strlen(text), 1000);
+  snprintf((char*)text, 16, ",%.2f, \n  %.2f, \n" , u/999, temperature);
+  HAL_UART_Transmit(&huart3, (char*)text, strlen(text), 1000);
 }
 
 /* USER CODE END 4 */
